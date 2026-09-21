@@ -358,10 +358,9 @@ function weakestOf(hands){ // weakest = lowest pair, or lowest kicker
 function explainThreshold(hand,pos,raiseSet,correctAction){
   const fam=famLabel(hand);
   const members=[...raiseSet].filter(h=>sameFamily(h,hand));
-  if(!members.length) return `From ${pos} you don't open any ${fam} — ${hand} is a fold.`;
+  if(!members.length) return `No ${fam} from ${pos}`;
   const weakest=weakestOf(members);
-  if(correctAction==='raise') return `${hand} is in range — from ${pos} you open ${fam} down to ${weakest} (${weakest}+).`;
-  return `From ${pos} you open ${fam} only down to ${weakest} (${weakest}+). ${hand} is weaker — fold.`;
+  return `${fam.charAt(0).toUpperCase()+fam.slice(1)}: ${weakest}+`;
 }
 
 // ---- Categories ----
