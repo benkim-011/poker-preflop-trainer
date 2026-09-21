@@ -1,6 +1,12 @@
 # Preflop Trainer
 
-A phone-friendly **raise-or-fold** drill for memorizing preflop opening ranges. Deal a hand, tap **Fold** or **Raise**, get instant right/wrong feedback. Single self-contained `index.html` — no build step, no dependencies.
+A phone-friendly trainer for memorizing preflop opening ranges. Single self-contained `index.html` — no build step, no dependencies.
+
+**Four tabs:**
+- **Drill** — deal a hand, tap **Fold** or **Raise**. Correct answers advance instantly; a miss pauses to explain the category threshold (e.g. "you open suited kings only down to K9s").
+- **Flash** — a study mode that auto-cycles every hand you *should* open from a seat, so you learn a range by sight. Play/pause, three speeds, tap to step.
+- **Chart** — the classic 13×13 range grid for any seat/style, with open % and per-category breakdown.
+- **Misses** — logs every hand you get wrong, sorted by frequency, with a **Practice these** button that re-deals only your misses until you clear them.
 
 **Live app:** https://claude.ai/artifact/RBa8gwA9m8jUvFeW1b6mxU (private artifact)
 
@@ -16,8 +22,6 @@ Open-raise / **RFI** only ("raise first in"): the pot is unopened and folded to 
 - **Style** — `TAG` (Tight-Aggressive, default, beginner-recommended) or `GTO / Balanced` (solver baseline).
 - **Position** — `Random (all)` to test across every seat, or lock to one seat to grind it.
 - **Category** — drill `All hands` or focus one: Pairs, Suited Aces, Suited Broadways, Suited Connectors, Offsuit Aces, Offsuit Broadways, Other.
-
-There's also a **Chart** tab showing the classic 13×13 range grid for any seat/style, with its open % and a per-category breakdown.
 
 ## Styles & the pocket-pairs question
 
