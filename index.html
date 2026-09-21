@@ -358,7 +358,7 @@ function weakestOf(hands){ // weakest = lowest pair, or lowest kicker
 function explainThreshold(hand,pos,raiseSet,correctAction){
   const fam=famLabel(hand);
   const members=[...raiseSet].filter(h=>sameFamily(h,hand));
-  if(!members.length) return `No ${fam} from ${pos}`;
+  if(!members.length) return `No ${fam} opened here`;
   const weakest=weakestOf(members);
   return `${fam.charAt(0).toUpperCase()+fam.slice(1)}: ${weakest}+`;
 }
