@@ -12,6 +12,7 @@
     --good:#1f9d57; --good-bg:#e5f5ec; --good-ink:#0c5c30;
     --bad:#cf3f52; --bad-bg:#fbe7ea; --bad-ink:#8f1f2e;
     --card-face:#f8f5ec; --card-edge:#d8d2bf; --card-red:#c8384b; --card-black:#1c2622;
+    --flash-hi:#f4c020;
     --shadow:0 1px 2px rgba(20,40,30,.06),0 6px 20px rgba(20,40,30,.08);
     --radius:14px;
     --font-display:"Fraunces",Georgia,serif;
@@ -159,12 +160,9 @@
   .chart-note{color:var(--muted);font-size:12px;margin:14px 2px 4px;line-height:1.5}
 
   /* Flash */
-  .flash-open{text-align:center;font-family:var(--font-mono);font-weight:700;letter-spacing:.14em;color:var(--felt);font-size:13px;min-height:18px}
-  .flash-bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:16px;flex-wrap:wrap}
-  .flash-speeds{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface)}
-  .flash-speeds button{border:0;background:transparent;color:var(--muted);font-family:var(--font-body);font-weight:600;font-size:12px;padding:7px 13px;cursor:pointer;border-left:1px solid var(--border)}
-  .flash-speeds button:first-child{border-left:0}
-  .flash-speeds button[aria-pressed="true"]{background:var(--felt);color:var(--felt-ink)}
+  .card.open{border-color:var(--flash-hi);box-shadow:0 0 0 3px var(--flash-hi),0 0 20px color-mix(in srgb,var(--flash-hi) 70%,transparent),var(--shadow);animation:flashpop .3s ease-out both}
+  @keyframes flashpop{0%{transform:scale(.9)}55%{transform:scale(1.05)}100%{transform:none}}
+  .flash-bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
   .flash-prog{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
   #flashCards{cursor:pointer}
 
@@ -198,7 +196,7 @@
     table.grid td{width:23px;height:23px;font-size:9px}
   }
   @media (prefers-reduced-motion:reduce){
-    .card.deal,.verdict{animation:none}
+    .card.deal,.card.open,.verdict{animation:none}
   }
 </style>
 
@@ -272,18 +270,15 @@
       <div class="prompt"><div class="pos-badge" id="flashBadge">—</div></div>
       <div class="cards" id="flashCards"></div>
       <div class="notation" id="flashNotation">&nbsp;</div>
-      <div class="flash-open" id="flashOpen">OPEN</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-raise" id="flashNextBtn">Next card ▸<span class="k">Space</span></button>
     </div>
     <div class="flash-bar">
-      <button class="btn-mini" id="flashPlay">⏸ Pause</button>
-      <div class="flash-speeds" id="flashSpeeds" role="group" aria-label="Speed">
-        <button type="button" data-ms="2000">Slow</button>
-        <button type="button" data-ms="1300">Med</button>
-        <button type="button" data-ms="800">Fast</button>
-      </div>
-      <span class="flash-prog" id="flashProg">0 / 0</span>
+      <button class="btn-mini" id="flashMute">🔊 Sound on</button>
+      <span class="flash-prog" id="flashProg">0 opens / 0</span>
     </div>
-    <p class="chart-note">Flashing every open-raise hand for this seat &amp; filter. Tap a card to step. Use the gear to change seat, style, or category — "All seats" cycles them all.</p>
+    <p class="chart-note">Tap <b>Next card</b> for a random hand at true deck odds. If it's an open-raise from this seat, the cards glow yellow with a ding — train the reflex. Use the gear to change seat or style; "All seats" mixes every position.</p>
   </section>
 
   <!-- CHART -->
@@ -443,7 +438,7 @@ const STYLE_LABEL={TAG:'Tight-Aggressive',GTO:'GTO / Balanced'};
 const LS_KEY='preflop-trainer-v1';
 let state={format:'6-max',style:'TAG',position:'RANDOM',category:'ALL',
   correct:0,total:0,streak:0,best:0,view:'drill',showSettings:false,
-  misses:{},practiceMisses:false,flashSpeed:1300};
+  misses:{},practiceMisses:false,soundOn:true};
 try{const saved=JSON.parse(localStorage.getItem(LS_KEY));if(saved)Object.assign(state,saved);}catch(e){}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
 
@@ -510,10 +505,10 @@ function suitsFor(hand){
   const a=Math.floor(Math.random()*4);let b=Math.floor(Math.random()*3);if(b>=a)b++;
   return [{r:hand[0],...SUITS[a]},{r:hand[1],...SUITS[b]}];
 }
-function renderCards(cardDefs,animate,targetId){
+function renderCards(cardDefs,animate,targetId,extraClass){
   const el=$(targetId||'cards');el.innerHTML='';
   cardDefs.forEach(c=>{
-    const d=document.createElement('div');d.className='card'+(animate?' deal':'');
+    const d=document.createElement('div');d.className='card'+(animate?' deal':'')+(extraClass?' '+extraClass:'');
     d.innerHTML=`<div class="corner tl ${c.c}"><span>${faceRank(c.r)}</span><span class="pip">${c.g}</span></div>`+
       `<div class="center ${c.c}">${c.g}</div>`+
       `<div class="corner br ${c.c}"><span>${faceRank(c.r)}</span><span class="pip">${c.g}</span></div>`;
@@ -680,73 +675,75 @@ function exitPractice(done){
   }
 }
 
-// ---- Flash (study) mode ----
-let flashList=[],flashIdx=0,flashPlaying=false,flashTimer=null;
-function buildFlashList(){
-  const positions=DATA[state.format].positions;
-  const seats=(state.position==='RANDOM'||!positions.includes(state.position))?positions:[state.position];
-  const list=[];
-  seats.forEach(pos=>{
-    expandRange(currentStyleFor(pos)).forEach(h=>{
-      if(state.category==='ALL'||categoryOf(h)===state.category)list.push({hand:h,pos});
-    });
+// ---- Flash (Pavlov study) mode ----
+// Manual: tap Next for a random hand at true deck frequency. If it's an open,
+// the cards glow yellow + a ding plays.
+let audioCtx=null;
+let flashTally={opens:0,shown:0};
+function ensureAudio(){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+  }catch(e){}
+}
+function ding(){
+  if(!state.soundOn)return;ensureAudio();if(!audioCtx)return;
+  const t=audioCtx.currentTime;
+  const master=audioCtx.createGain();master.gain.value=0.5;master.connect(audioCtx.destination);
+  [[1046.5,1.0,0.4],[2093,0.35,0.3]].forEach(([f,amp,dur])=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type='sine';o.frequency.value=f;o.connect(g);g.connect(master);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(amp,t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t);o.stop(t+dur+0.02);
   });
-  for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
-  flashList=list;flashIdx=0;
 }
-function renderFlashCard(){
-  if(!flashList.length){
-    $('flashBadge').textContent='—';$('flashCards').innerHTML='';
-    $('flashNotation').innerHTML='&nbsp;';$('flashOpen').textContent='No opening hands in this filter';
-    $('flashProg').textContent='0 / 0';return;
+function flashDeal(){
+  const positions=DATA[state.format].positions;
+  const pos=(state.position==='RANDOM'||!positions.includes(state.position))
+    ?positions[Math.floor(Math.random()*positions.length)]:state.position;
+  const raiseSet=expandRange(currentStyleFor(pos));
+  // draw 2 distinct cards from 52 -> real combo frequency (pairs rare, offsuit common)
+  const a=Math.floor(Math.random()*52);let b=Math.floor(Math.random()*51);if(b>=a)b++;
+  const ra=a>>2,sa=a&3,rb=b>>2,sb=b&3;
+  let hand,cardDefs;
+  if(ra===rb){
+    hand=RANKS[ra]+RANKS[ra];
+    cardDefs=[{r:RANKS[ra],...SUITS[sa]},{r:RANKS[rb],...SUITS[sb]}];
+  }else{
+    let hR,hS,lR,lS;
+    if(ra<rb){hR=ra;hS=sa;lR=rb;lS=sb;}else{hR=rb;hS=sb;lR=ra;lS=sa;}
+    hand=RANKS[hR]+RANKS[lR]+(sa===sb?'s':'o');
+    cardDefs=[{r:RANKS[hR],...SUITS[hS]},{r:RANKS[lR],...SUITS[lS]}];
   }
-  const it=flashList[flashIdx];
-  $('flashBadge').innerHTML=`${it.pos} <span class="fmt">· ${state.format} · ${state.style}</span>`;
-  renderCards(suitsFor(it.hand),true,'flashCards');
-  $('flashNotation').innerHTML=`${it.hand} <span class="cat">· ${categoryOf(it.hand)}</span>`;
-  $('flashOpen').textContent='OPEN';
-  $('flashProg').textContent=`${flashIdx+1} / ${flashList.length}`;
+  const open=raiseSet.has(hand);
+  $('flashBadge').innerHTML=`${pos} <span class="fmt">· ${state.format} · ${state.style}</span>`;
+  renderCards(cardDefs,true,'flashCards',open?'open':'');
+  $('flashNotation').innerHTML=`${hand} <span class="cat">· ${categoryOf(hand)}</span>`;
+  flashTally.shown++;if(open)flashTally.opens++;
+  $('flashProg').textContent=`${flashTally.opens} opens / ${flashTally.shown}`;
+  if(open)ding();
 }
-function flashNext(){
-  if(!flashList.length)return;
-  flashIdx++;
-  if(flashIdx>=flashList.length)buildFlashList(); // reshuffle for another pass
-  renderFlashCard();
-}
-function flashSchedule(){
-  clearTimeout(flashTimer);
-  if(flashPlaying&&state.view==='flash'&&flashList.length)
-    flashTimer=setTimeout(()=>{flashNext();flashSchedule();},state.flashSpeed);
-}
-function setFlashPlaying(on){
-  flashPlaying=on;
-  $('flashPlay').textContent=on?'⏸ Pause':'▶ Play';
-  flashSchedule();
-}
-function flashStep(){flashNext();flashSchedule();}
-function updateSpeedButtons(){
-  $('flashSpeeds').querySelectorAll('button').forEach(b=>
-    b.setAttribute('aria-pressed', +b.dataset.ms===state.flashSpeed));
-}
+function updateMuteBtn(){$('flashMute').textContent=state.soundOn?'🔊 Sound on':'🔇 Muted';}
 
 // ---- View switching ----
 function setView(v){
   state.view=v;save();
-  clearTimeout(flashTimer);
   ['drill','flash','chart','misses'].forEach(name=>{
     $('tab-'+name).setAttribute('aria-selected',v===name);
     $('view-'+name).hidden=v!==name;
   });
   if(v==='chart')renderChart();
   if(v==='misses')renderMisses();
-  if(v==='flash'){buildFlashList();renderFlashCard();setFlashPlaying(true);}
+  if(v==='flash'){ensureAudio();flashDeal();}
 }
 
 // ---- Wire up ----
 function refreshView(){
   if(state.view==='drill')deal();
   else if(state.view==='chart')renderChart();
-  else if(state.view==='flash'){buildFlashList();renderFlashCard();flashSchedule();}
+  else if(state.view==='flash')flashDeal();
   else if(state.view==='misses')renderMisses();
 }
 function refreshAfterControlChange(){
@@ -762,9 +759,9 @@ $('tab-drill').onclick=()=>setView('drill');
 $('tab-flash').onclick=()=>setView('flash');
 $('tab-chart').onclick=()=>setView('chart');
 $('tab-misses').onclick=()=>setView('misses');
-$('flashPlay').onclick=()=>setFlashPlaying(!flashPlaying);
-$('flashCards').onclick=flashStep;
-$('flashSpeeds').onclick=e=>{const b=e.target.closest('button');if(!b)return;state.flashSpeed=+b.dataset.ms;save();updateSpeedButtons();flashSchedule();};
+$('flashNextBtn').onclick=()=>{ensureAudio();flashDeal();};
+$('flashCards').onclick=()=>{ensureAudio();flashDeal();};
+$('flashMute').onclick=()=>{state.soundOn=!state.soundOn;save();updateMuteBtn();if(state.soundOn){ensureAudio();ding();}};
 $('btnReset').onclick=()=>{state.correct=0;state.total=0;state.streak=0;state.best=0;save();updateScore();};
 $('btnPractice').onclick=startPractice;
 $('btnExitPractice').onclick=()=>exitPractice(false);
@@ -774,8 +771,7 @@ document.addEventListener('keydown',e=>{
   if(e.target.tagName==='SELECT')return;
   const k=e.key.toLowerCase();
   if(state.view==='flash'){
-    if(k===' '){e.preventDefault();setFlashPlaying(!flashPlaying);}
-    else if(k==='arrowright'||k==='enter'){e.preventDefault();flashStep();}
+    if(k===' '||k==='enter'||k==='arrowright'){e.preventDefault();ensureAudio();flashDeal();}
     return;
   }
   if(state.view!=='drill')return;
@@ -791,7 +787,7 @@ document.addEventListener('keydown',e=>{
 if(!state.misses)state.misses={};
 if(state.practiceMisses&&!missEntries().length)state.practiceMisses=false;
 buildFormatSel();buildStyleSel();buildPosSel();buildCatSel();updateScore();
-updateConfigChip();setSettings(state.showSettings);updateMissTab();updateSpeedButtons();
+updateConfigChip();setSettings(state.showSettings);updateMissTab();updateMuteBtn();
 $('practiceBanner').hidden=!state.practiceMisses;
 setView(state.view||'drill');
 if(state.view==='drill')deal();
