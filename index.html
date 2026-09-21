@@ -160,6 +160,8 @@
   .chart-note{color:var(--muted);font-size:12px;margin:14px 2px 4px;line-height:1.5}
 
   /* Flash */
+  .flash-next{display:flex;justify-content:center;margin-top:2px}
+  .flash-next .btn{width:100%;max-width:300px}
   .card.open{border-color:var(--flash-hi);box-shadow:0 0 0 3px var(--flash-hi),0 0 20px color-mix(in srgb,var(--flash-hi) 70%,transparent),var(--shadow);animation:flashpop .3s ease-out both}
   @keyframes flashpop{0%{transform:scale(.9)}55%{transform:scale(1.05)}100%{transform:none}}
   .flash-bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
@@ -271,7 +273,7 @@
       <div class="cards" id="flashCards"></div>
       <div class="notation" id="flashNotation">&nbsp;</div>
     </div>
-    <div class="actions">
+    <div class="flash-next">
       <button class="btn btn-raise" id="flashNextBtn">Next card ▸<span class="k">Space</span></button>
     </div>
     <div class="flash-bar">
