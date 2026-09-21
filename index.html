@@ -88,10 +88,9 @@
 
   /* Drill stage */
   .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-block:18px 8px}
-  .prompt{text-align:center;min-height:44px;display:flex;flex-direction:column;gap:3px;justify-content:center}
+  .prompt{text-align:center;min-height:22px;display:flex;flex-direction:column;justify-content:center}
   .pos-badge{font-family:var(--font-mono);font-weight:700;font-size:13px;letter-spacing:.06em;color:var(--felt);text-transform:uppercase}
   .pos-badge .fmt{color:var(--muted);font-weight:500}
-  .prompt .desc{color:var(--muted);font-size:13px}
 
   .cards{display:flex;gap:12px;justify-content:center;align-items:center;perspective:800px}
   .card{
@@ -159,6 +158,28 @@
   .breakdown .row .v{font-family:var(--font-mono);font-weight:600;text-align:right}
   .chart-note{color:var(--muted);font-size:12px;margin:14px 2px 4px;line-height:1.5}
 
+  /* Misses */
+  .miss-actions{display:flex;gap:8px;margin-top:12px}
+  .btn-mini{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:8px 14px;font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer;transition:filter .15s}
+  .btn-mini:active{transform:translateY(1px)}
+  .btn-mini.practice{background:var(--gold);color:#1a1204;border-color:transparent}
+  .miss-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .miss-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+  .miss-row .h{font-family:var(--font-mono);font-weight:700;font-size:17px;letter-spacing:.02em;min-width:52px}
+  .miss-row .meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .miss-row .meta .seat{font-size:13px;font-weight:600}
+  .miss-row .meta .sub{font-size:11.5px;color:var(--muted);font-family:var(--font-mono)}
+  .miss-row .tag{font-family:var(--font-mono);font-weight:700;font-size:11px;padding:4px 9px;border-radius:999px;letter-spacing:.04em}
+  .miss-row .tag.raise{background:var(--felt-soft);color:var(--felt)}
+  .miss-row .tag.fold{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+  .miss-row .cnt{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--bad);min-width:30px;text-align:right}
+  .miss-empty{text-align:center;color:var(--muted);padding:34px 16px;font-size:14px;line-height:1.6}
+  .miss-empty .big{font-size:30px;display:block;margin-bottom:8px}
+
+  /* Practice banner */
+  .practice-banner{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--felt-soft);border:1px solid color-mix(in srgb,var(--felt) 30%,transparent);color:var(--felt);border-radius:11px;padding:9px 8px 9px 14px;margin-top:12px;font-size:12.5px;font-weight:600}
+  .practice-banner button{border:0;background:var(--felt);color:var(--felt-ink);border-radius:8px;padding:6px 12px;font-family:var(--font-body);font-weight:600;font-size:12px;cursor:pointer}
+
   footer{color:var(--muted);font-size:11px;text-align:center;padding:14px 0 18px;line-height:1.5}
   footer b{color:var(--text);font-weight:600}
 
@@ -183,6 +204,7 @@
     <div class="tabs" role="tablist">
       <button id="tab-drill" role="tab" aria-selected="true">Drill</button>
       <button id="tab-chart" role="tab" aria-selected="false">Chart</button>
+      <button id="tab-misses" role="tab" aria-selected="false">Misses</button>
     </div>
     <button class="config-chip" id="configChip" type="button" aria-controls="controls"></button>
   </header>
@@ -208,10 +230,13 @@
 
   <!-- DRILL -->
   <section id="view-drill">
+    <div class="practice-banner" id="practiceBanner" hidden>
+      <span>Practicing your misses — get each right to clear it</span>
+      <button id="btnExitPractice" aria-label="Exit practice">Exit</button>
+    </div>
     <div class="stage">
       <div class="prompt">
         <div class="pos-badge" id="posBadge">—</div>
-        <div class="desc" id="posDesc">Folded to you. Do you open?</div>
       </div>
       <div class="cards" id="cards"></div>
       <div class="notation" id="notation">&nbsp;</div>
@@ -240,6 +265,20 @@
     <div class="legend"><span><i class="r"></i> Raise (open)</span><span><i class="f"></i> Fold</span></div>
     <div class="breakdown" id="breakdown"></div>
     <p class="chart-note" id="chartNote"></p>
+  </section>
+
+  <!-- MISSES -->
+  <section id="view-misses" hidden>
+    <div class="chart-head">
+      <h2>Your misses</h2>
+      <span class="pct" id="missCount">—</span>
+    </div>
+    <div class="miss-actions" id="missActions" hidden>
+      <button class="btn-mini practice" id="btnPractice">Practice these ▸</button>
+      <button class="btn-mini" id="btnClearMisses">Clear all</button>
+    </div>
+    <div id="missList"></div>
+    <p class="chart-note" id="missNote"></p>
   </section>
 
   <footer>
@@ -295,17 +334,6 @@ for(let i=0;i<13;i++){
   }
 }
 
-// ---- Position meta ----
-const POS_META={
-  'UTG':'Under the Gun — first to act, full table behind you.',
-  'UTG+1':'Under the Gun +1 — early position.',
-  'MP':'Middle Position.',
-  'HJ':'Hijack — two off the button.',
-  'CO':'Cutoff — one off the button.',
-  'BTN':'Button — best seat, last to act after the flop.',
-  'SB':'Small Blind — first to act postflop; only the BB behind.'
-};
-
 // ---- RANGE DATA ----  raise-first-in opening ranges (tokens)
 const DATA={
  '6-max':{positions:['UTG','HJ','CO','BTN','SB'],styles:{
@@ -358,7 +386,8 @@ const STYLE_LABEL={TAG:'Tight-Aggressive',GTO:'GTO / Balanced'};
 // ---- State ----
 const LS_KEY='preflop-trainer-v1';
 let state={format:'6-max',style:'TAG',position:'RANDOM',category:'ALL',
-  correct:0,total:0,streak:0,best:0,view:'drill',showSettings:false};
+  correct:0,total:0,streak:0,best:0,view:'drill',showSettings:false,
+  misses:{},practiceMisses:false};
 try{const saved=JSON.parse(localStorage.getItem(LS_KEY));if(saved)Object.assign(state,saved);}catch(e){}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
 
@@ -435,14 +464,31 @@ function renderCards(cardDefs,animate){
     el.appendChild(d);
   });
 }
+function missKey(fmt,style,pos,hand){return `${fmt}|${style}|${pos}|${hand}`;}
+function missEntries(){return Object.entries(state.misses);}
+
 function deal(){
   answered=false;
+  // practice-misses mode: re-deal only hands you've gotten wrong
+  if(state.practiceMisses){
+    const entries=missEntries();
+    if(!entries.length){exitPractice(true);return;}
+    const [key,r]=entries[Math.floor(Math.random()*entries.length)];
+    current={hand:r.hand,pos:r.pos,correctAction:r.correct,practiceKey:key,fmt:r.format,style:r.style};
+    $('posBadge').innerHTML=`${r.pos} <span class="fmt">· ${r.format} · ${r.style}</span>`;
+    renderCards(suitsFor(r.hand),true);
+    $('notation').innerHTML='&nbsp;';$('feedback').innerHTML='';
+    $('actions').innerHTML=
+      '<button class="btn btn-fold" id="btnFold">Fold<span class="k">F</span></button>'+
+      '<button class="btn btn-raise" id="btnRaise">Raise<span class="k">R / Space</span></button>';
+    $('btnFold').onclick=()=>answer('fold');$('btnRaise').onclick=()=>answer('raise');
+    return;
+  }
   const pos=pickPosition();
   const hand=pickHand();
   const raiseSet=expandRange(currentStyleFor(pos));
   current={hand,pos,correctAction:raiseSet.has(hand)?'raise':'fold'};
   $('posBadge').innerHTML=`${pos} <span class="fmt">· ${state.format}</span>`;
-  $('posDesc').textContent=POS_META[pos]||'Folded to you. Do you open?';
   renderCards(suitsFor(hand),true);
   $('notation').innerHTML='&nbsp;';
   $('feedback').innerHTML='';
@@ -458,6 +504,19 @@ function answer(action){
   state.total++;
   if(right){state.correct++;state.streak++;if(state.streak>state.best)state.best=state.streak;}
   else state.streak=0;
+  // miss tracking
+  if(current.practiceKey){
+    const m=state.misses[current.practiceKey];
+    if(m){
+      if(right){m.count--;if(m.count<=0)delete state.misses[current.practiceKey];}
+      else{m.count++;m.last=Date.now();}
+    }
+  }else if(!right){
+    const key=missKey(state.format,state.style,current.pos,current.hand);
+    const m=state.misses[key]||{hand:current.hand,pos:current.pos,format:state.format,style:state.style,correct:current.correctAction,count:0};
+    m.count++;m.last=Date.now();m.correct=current.correctAction;state.misses[key]=m;
+  }
+  updateMissTab();
   save();updateScore();
   const cat=categoryOf(current.hand);
   $('notation').innerHTML=`${current.hand} <span class="cat">· ${cat}</span>`;
@@ -522,15 +581,59 @@ function renderChart(){
     : `Green cells are hands you open-raise from ${pos}. Suited hands sit above the diagonal, offsuit below, pairs on the diagonal.`;
 }
 
+// ---- Misses ----
+function updateMissTab(){
+  const n=missEntries().length;
+  $('tab-misses').textContent=n?`Misses (${n})`:'Misses';
+}
+function renderMisses(){
+  const entries=missEntries().map(([k,r])=>r)
+    .sort((a,b)=>b.count-a.count||(b.last||0)-(a.last||0));
+  const totalMistakes=entries.reduce((s,r)=>s+r.count,0);
+  $('missCount').textContent=entries.length?`${entries.length} hand${entries.length>1?'s':''}`:'';
+  $('missActions').hidden=!entries.length;
+  const list=$('missList');
+  if(!entries.length){
+    list.innerHTML='<div class="miss-empty"><span class="big">♠</span>No misses yet.<br>Hands you get wrong show up here so you can drill them.</div>';
+    $('missNote').textContent='';
+    return;
+  }
+  list.className='miss-list';
+  list.innerHTML=entries.map(r=>{
+    const act=r.correct.toUpperCase();
+    return `<div class="miss-row">`+
+      `<span class="h">${r.hand}</span>`+
+      `<span class="meta"><span class="seat">${r.pos} · ${r.format}</span><span class="sub">${r.style} · ${categoryOf(r.hand)}</span></span>`+
+      `<span class="tag ${r.correct}">${act}</span>`+
+      `<span class="cnt">×${r.count}</span></div>`;
+  }).join('');
+  $('missNote').textContent=`${totalMistakes} total mistake${totalMistakes>1?'s':''} across ${entries.length} hand${entries.length>1?'s':''}. "Practice these" re-deals only these until you get each right.`;
+}
+function startPractice(){
+  if(!missEntries().length)return;
+  state.practiceMisses=true;save();
+  $('practiceBanner').hidden=false;
+  setView('drill');deal();
+}
+function exitPractice(done){
+  state.practiceMisses=false;save();
+  $('practiceBanner').hidden=true;
+  if(done){
+    setView('misses');
+  }else{
+    deal();
+  }
+}
+
 // ---- View switching ----
 function setView(v){
   state.view=v;save();
-  const drill=v==='drill';
-  $('tab-drill').setAttribute('aria-selected',drill);
-  $('tab-chart').setAttribute('aria-selected',!drill);
-  $('view-drill').hidden=!drill;
-  $('view-chart').hidden=drill;
-  if(!drill)renderChart();
+  ['drill','chart','misses'].forEach(name=>{
+    $('tab-'+name).setAttribute('aria-selected',v===name);
+    $('view-'+name).hidden=v!==name;
+  });
+  if(v==='chart')renderChart();
+  if(v==='misses')renderMisses();
 }
 
 // ---- Wire up ----
@@ -546,7 +649,11 @@ $('btnSettings').onclick=()=>setSettings(!state.showSettings);
 $('configChip').onclick=()=>setSettings(!state.showSettings);
 $('tab-drill').onclick=()=>setView('drill');
 $('tab-chart').onclick=()=>setView('chart');
+$('tab-misses').onclick=()=>setView('misses');
 $('btnReset').onclick=()=>{state.correct=0;state.total=0;state.streak=0;state.best=0;save();updateScore();};
+$('btnPractice').onclick=startPractice;
+$('btnExitPractice').onclick=()=>exitPractice(false);
+$('btnClearMisses').onclick=()=>{state.misses={};if(state.practiceMisses)exitPractice(false);save();updateMissTab();renderMisses();};
 
 document.addEventListener('keydown',e=>{
   if(state.view!=='drill')return;
@@ -561,8 +668,11 @@ document.addEventListener('keydown',e=>{
 });
 
 // init
+if(!state.misses)state.misses={};
+if(state.practiceMisses&&!missEntries().length)state.practiceMisses=false;
 buildFormatSel();buildStyleSel();buildPosSel();buildCatSel();updateScore();
-updateConfigChip();setSettings(state.showSettings);
+updateConfigChip();setSettings(state.showSettings);updateMissTab();
+$('practiceBanner').hidden=!state.practiceMisses;
 setView(state.view||'drill');
 if(state.view==='drill')deal();
 </script>
