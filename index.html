@@ -418,7 +418,6 @@ function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e)
 
 let current=null; // {hand,pos,correctAction,raiseSet,...}
 let answered=false;
-let pendingTimer=null;
 
 // ---- DOM ----
 const $=id=>document.getElementById(id);
@@ -494,7 +493,6 @@ function missKey(fmt,style,pos,hand){return `${fmt}|${style}|${pos}|${hand}`;}
 function missEntries(){return Object.entries(state.misses);}
 
 function deal(){
-  clearTimeout(pendingTimer);
   answered=false;
   // practice-misses mode: re-deal only hands you've gotten wrong
   if(state.practiceMisses){
@@ -546,21 +544,14 @@ function answer(action){
   }
   updateMissTab();
   save();updateScore();
+  if(right){deal();return;} // correct — straight to the next hand, no feedback
+  // wrong — stop and teach the threshold
   const correctWord=current.correctAction.toUpperCase();
   $('notation').innerHTML=`${current.hand} <span class="cat">· ${categoryOf(current.hand)}</span>`;
-  const fb=$('feedback');
-  if(right){
-    // correct — flash and auto-advance, no click needed
-    fb.innerHTML=`<div class="verdict good"><span class="lead">✓ ${correctWord} ${current.hand}</span></div>`;
-    const f=$('btnFold'),r=$('btnRaise');if(f)f.disabled=true;if(r)r.disabled=true;
-    pendingTimer=setTimeout(deal,480);
-  }else{
-    // wrong — stop and teach the threshold
-    fb.innerHTML=`<div class="verdict bad"><span class="lead">✗ ${correctWord} ${current.hand}</span>`+
-      `<span class="note">${explainThreshold(current.hand,current.pos,current.raiseSet,current.correctAction)}</span></div>`;
-    $('actions').innerHTML='<button class="btn btn-next" id="btnNext">Next hand ▸<span class="k">Space / Enter</span></button>';
-    $('btnNext').onclick=deal;
-  }
+  $('feedback').innerHTML=`<div class="verdict bad"><span class="lead">✗ ${correctWord} ${current.hand}</span>`+
+    `<span class="note">${explainThreshold(current.hand,current.pos,current.raiseSet,current.correctAction)}</span></div>`;
+  $('actions').innerHTML='<button class="btn btn-next" id="btnNext">Next hand ▸<span class="k">Space / Enter</span></button>';
+  $('btnNext').onclick=deal;
 }
 function updateScore(){
   $('stAcc').textContent=state.total?Math.round(100*state.correct/state.total)+'%':'—';
