@@ -1,0 +1,568 @@
+<title>Preflop Trainer</title>
+<meta name="description" content="A raise-or-fold preflop drill for opening ranges, by position, style, and format.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1ec; --surface:#ffffff; --surface-2:#f6f8f4;
+    --text:#16211b; --muted:#5a6b60; --border:#d8e0d6;
+    --felt:#0e6b45; --felt-ink:#ffffff; --felt-soft:#e2f0e8;
+    --gold:#b8893b;
+    --good:#1f9d57; --good-bg:#e5f5ec; --good-ink:#0c5c30;
+    --bad:#cf3f52; --bad-bg:#fbe7ea; --bad-ink:#8f1f2e;
+    --card-face:#f8f5ec; --card-edge:#d8d2bf; --card-red:#c8384b; --card-black:#1c2622;
+    --shadow:0 1px 2px rgba(20,40,30,.06),0 6px 20px rgba(20,40,30,.08);
+    --radius:14px;
+    --font-display:"Fraunces",Georgia,serif;
+    --font-body:"Public Sans",system-ui,-apple-system,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme:dark){
+      --bg:#0e1411; --surface:#161e19; --surface-2:#1b2520;
+      --text:#e7efe8; --muted:#93a598; --border:#28332c;
+      --felt:#1f9d66; --felt-ink:#062015; --felt-soft:#13291f;
+      --gold:#d7ad5f;
+      --good:#43c07f; --good-bg:#122a1d; --good-ink:#8ee3b1;
+      --bad:#e26374; --bad-bg:#2f1418; --bad-ink:#f2a9b3;
+      --card-face:#f4f1e6; --card-edge:#cfc8b4; --card-red:#c8384b; --card-black:#1c2622;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1411; --surface:#161e19; --surface-2:#1b2520;
+    --text:#e7efe8; --muted:#93a598; --border:#28332c;
+    --felt:#1f9d66; --felt-ink:#062015; --felt-soft:#13291f;
+    --gold:#d7ad5f;
+    --good:#43c07f; --good-bg:#122a1d; --good-ink:#8ee3b1;
+    --bad:#e26374; --bad-bg:#2f1418; --bad-ink:#f2a9b3;
+    --card-face:#f4f1e6; --card-edge:#cfc8b4; --card-red:#c8384b; --card-black:#1c2622;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--font-body);font-size:15px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;min-height:100%;
+  }
+  .wrap{width:100%;max-width:640px;margin:0 auto;padding-inline:16px;flex:1;display:flex;flex-direction:column}
+
+  /* Header */
+  header{padding-block:18px 10px;text-align:center}
+  .wordmark{font-family:var(--font-display);font-weight:600;font-size:27px;letter-spacing:-.01em;margin:0;display:inline-flex;align-items:center;gap:.34em}
+  .wordmark .suits{font-size:.62em;letter-spacing:.02em}
+  .wordmark .s-r{color:var(--card-red)} .wordmark .s-b{color:var(--felt)}
+  .tagline{color:var(--muted);font-size:12.5px;margin:3px 0 0;letter-spacing:.02em}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px;margin:12px auto 0;width:100%;max-width:280px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);font-family:var(--font-body);font-weight:600;font-size:13.5px;padding:8px 0;border-radius:999px;cursor:pointer;transition:color .15s,background .15s}
+  .tabs button[aria-selected="true"]{background:var(--felt);color:var(--felt-ink)}
+
+  /* Topbar + settings */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .topbar .wordmark{flex:1;justify-content:center}
+  .gear-spacer{width:34px;height:34px;flex:0 0 34px}
+  .gear{width:34px;height:34px;flex:0 0 34px;border:1px solid var(--border);background:var(--surface);border-radius:10px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,transform .3s}
+  .gear:focus-visible{outline:2px solid var(--felt);outline-offset:1px}
+  .gear[aria-expanded="true"]{background:var(--felt);color:var(--felt-ink);border-color:var(--felt);transform:rotate(30deg)}
+  .config-chip{margin:11px auto 0;display:block;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:.02em;cursor:pointer;padding:5px 12px;border-radius:999px;transition:color .15s,border-color .15s}
+  .config-chip:hover{color:var(--text);border-color:var(--muted)}
+
+  /* Controls */
+  .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .field{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;padding-left:2px}
+  .field select{
+    appearance:none;-webkit-appearance:none;width:100%;
+    background:var(--surface);color:var(--text);border:1px solid var(--border);
+    border-radius:10px;padding:9px 30px 9px 11px;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%237a8a80' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 10px center;
+  }
+  .field select:focus-visible{outline:2px solid var(--felt);outline-offset:1px}
+
+  /* Drill stage */
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-block:18px 8px}
+  .prompt{text-align:center;min-height:44px;display:flex;flex-direction:column;gap:3px;justify-content:center}
+  .pos-badge{font-family:var(--font-mono);font-weight:700;font-size:13px;letter-spacing:.06em;color:var(--felt);text-transform:uppercase}
+  .pos-badge .fmt{color:var(--muted);font-weight:500}
+  .prompt .desc{color:var(--muted);font-size:13px}
+
+  .cards{display:flex;gap:12px;justify-content:center;align-items:center;perspective:800px}
+  .card{
+    width:96px;height:134px;background:var(--card-face);border:1px solid var(--card-edge);
+    border-radius:12px;box-shadow:var(--shadow);position:relative;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .card.deal{animation:deal .32s cubic-bezier(.2,.7,.3,1) both}
+  .card:nth-child(2).deal{animation-delay:.07s}
+  @keyframes deal{from{opacity:0;transform:translateY(14px) rotate(-4deg) scale(.94)}to{opacity:1;transform:none}}
+  .card .corner{position:absolute;font-family:var(--font-body);font-weight:700;line-height:1;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:19px}
+  .card .corner.tl{top:8px;left:9px} .card .corner.br{bottom:8px;right:9px;transform:rotate(180deg)}
+  .card .corner .pip{font-size:15px}
+  .card .center{font-size:46px;line-height:1}
+  .r{color:var(--card-red)} .b{color:var(--card-black)}
+
+  .notation{text-align:center;font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.04em;min-height:20px;color:var(--muted)}
+  .notation .cat{color:var(--muted);font-weight:500;font-size:12.5px}
+
+  .feedback{min-height:52px;display:flex;align-items:center;justify-content:center}
+  .verdict{width:100%;border-radius:12px;padding:10px 14px;text-align:center;font-weight:600;font-size:14px;display:flex;flex-direction:column;gap:2px;animation:pop .18s ease-out both}
+  @keyframes pop{from{transform:scale(.97);opacity:.4}to{transform:none;opacity:1}}
+  .verdict.good{background:var(--good-bg);color:var(--good-ink);border:1px solid color-mix(in srgb,var(--good) 35%,transparent)}
+  .verdict.bad{background:var(--bad-bg);color:var(--bad-ink);border:1px solid color-mix(in srgb,var(--bad) 35%,transparent)}
+  .verdict .lead{font-family:var(--font-mono);font-weight:700;font-size:13px;letter-spacing:.03em}
+  .verdict .note{font-weight:500;font-size:12.5px;opacity:.9}
+
+  /* Actions */
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
+  .btn{border:0;border-radius:14px;padding:17px 0;font-family:var(--font-body);font-weight:700;font-size:16px;cursor:pointer;transition:transform .08s,filter .15s,box-shadow .15s;box-shadow:var(--shadow);letter-spacing:.01em}
+  .btn:active{transform:translateY(1px) scale(.99)}
+  .btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .btn-fold{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+  .btn-raise{background:var(--felt);color:var(--felt-ink)}
+  .btn .k{display:block;font-size:10.5px;font-weight:600;opacity:.6;margin-top:2px;letter-spacing:.06em;text-transform:uppercase}
+  .btn-next{grid-column:1/-1;background:var(--gold);color:#1a1204}
+  .btn[disabled]{opacity:.4;cursor:default;box-shadow:none}
+
+  /* Scorebar */
+  .scorebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:14px;color:var(--muted);font-size:12.5px;font-family:var(--font-mono);font-weight:500}
+  .scorebar .stat{display:inline-flex;align-items:baseline;gap:4px}
+  .scorebar .stat b{color:var(--text);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+  .scorebar .stat.acc b{color:var(--felt)}
+  .scorebar .dot{width:3px;height:3px;border-radius:50%;background:var(--border)}
+  .scorebar .reset{margin-left:auto;border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:8px;padding:5px 10px;font-family:var(--font-body);font-weight:600;font-size:11.5px;cursor:pointer}
+
+  /* Chart view */
+  .chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .chart-head h2{font-family:var(--font-display);font-weight:600;font-size:19px;margin:0}
+  .chart-head .pct{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--felt)}
+  .grid-scroll{overflow-x:auto;margin-top:12px;padding-bottom:4px}
+  table.grid{border-collapse:separate;border-spacing:2px;margin:0 auto}
+  table.grid td{width:26px;height:26px;text-align:center;font-family:var(--font-mono);font-size:9.5px;font-weight:500;border-radius:4px;color:var(--muted);background:var(--surface-2);border:1px solid transparent;user-select:none}
+  table.grid td.raise{background:var(--felt);color:var(--felt-ink);border-color:var(--felt)}
+  table.grid td.pair{font-weight:700}
+  table.grid td.raise.pair{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 60%,transparent)}
+  .legend{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .legend i.r{background:var(--felt)} .legend i.f{background:var(--surface-2);border:1px solid var(--border)}
+  .breakdown{margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+  .breakdown .row{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;font-size:13px;border-top:1px solid var(--border)}
+  .breakdown .row:first-child{border-top:0}
+  .breakdown .row .k{color:var(--muted)}
+  .breakdown .row .v{font-family:var(--font-mono);font-weight:600;text-align:right}
+  .chart-note{color:var(--muted);font-size:12px;margin:14px 2px 4px;line-height:1.5}
+
+  footer{color:var(--muted);font-size:11px;text-align:center;padding:14px 0 18px;line-height:1.5}
+  footer b{color:var(--text);font-weight:600}
+
+  @media (max-width:380px){
+    .card{width:84px;height:118px} .card .center{font-size:40px}
+    table.grid td{width:23px;height:23px;font-size:9px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .card.deal,.verdict{animation:none}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="topbar">
+      <span class="gear-spacer"></span>
+      <h1 class="wordmark"><span class="suits"><span class="s-b">♠</span><span class="s-r">♥</span></span> Preflop <span class="suits"><span class="s-r">♦</span><span class="s-b">♣</span></span></h1>
+      <button class="gear" id="btnSettings" aria-label="Settings" aria-expanded="false" title="Settings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tab-drill" role="tab" aria-selected="true">Drill</button>
+      <button id="tab-chart" role="tab" aria-selected="false">Chart</button>
+    </div>
+    <button class="config-chip" id="configChip" type="button" aria-controls="controls"></button>
+  </header>
+
+  <div class="controls" id="controls" hidden>
+    <div class="field">
+      <label for="sel-format">Format</label>
+      <select id="sel-format"></select>
+    </div>
+    <div class="field">
+      <label for="sel-style">Style</label>
+      <select id="sel-style"></select>
+    </div>
+    <div class="field">
+      <label for="sel-pos">Position</label>
+      <select id="sel-pos"></select>
+    </div>
+    <div class="field">
+      <label for="sel-cat">Category</label>
+      <select id="sel-cat"></select>
+    </div>
+  </div>
+
+  <!-- DRILL -->
+  <section id="view-drill">
+    <div class="stage">
+      <div class="prompt">
+        <div class="pos-badge" id="posBadge">—</div>
+        <div class="desc" id="posDesc">Folded to you. Do you open?</div>
+      </div>
+      <div class="cards" id="cards"></div>
+      <div class="notation" id="notation">&nbsp;</div>
+      <div class="feedback" id="feedback"></div>
+      <div class="actions" id="actions">
+        <button class="btn btn-fold" id="btnFold">Fold<span class="k">F</span></button>
+        <button class="btn btn-raise" id="btnRaise">Raise<span class="k">R / Space</span></button>
+      </div>
+    </div>
+    <div class="scorebar">
+      <span class="stat acc"><b id="stAcc">—</b> acc</span><span class="dot"></span>
+      <span class="stat"><b id="stCount">0/0</b></span><span class="dot"></span>
+      <span class="stat">streak <b id="stStreak">0</b></span><span class="dot"></span>
+      <span class="stat">best <b id="stBest">0</b></span>
+      <button class="reset" id="btnReset">Reset</button>
+    </div>
+  </section>
+
+  <!-- CHART -->
+  <section id="view-chart" hidden>
+    <div class="chart-head">
+      <h2 id="chartTitle">Range</h2>
+      <span class="pct" id="chartPct">—</span>
+    </div>
+    <div class="grid-scroll"><table class="grid" id="grid"></table></div>
+    <div class="legend"><span><i class="r"></i> Raise (open)</span><span><i class="f"></i> Fold</span></div>
+    <div class="breakdown" id="breakdown"></div>
+    <p class="chart-note" id="chartNote"></p>
+  </section>
+
+  <footer>
+    <b>RFI only</b> — the pot is unopened and folded to you. The Big Blind has no open-raise range (if it folds to the BB, they already win), so it is not drilled. Ranges are standard ~100bb reference charts for learning, not a live solver.
+  </footer>
+</div>
+
+<script>
+"use strict";
+const RANKS=['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const RIDX={};RANKS.forEach((r,i)=>RIDX[r]=i);
+const SUITS=[{g:'♠',c:'b'},{g:'♥',c:'r'},{g:'♦',c:'r'},{g:'♣',c:'b'}];
+const faceRank=r=>r==='T'?'10':r;
+
+// ---- Range token expander ----
+function expandToken(tok){
+  const out=[];
+  let m;
+  if((m=tok.match(/^([AKQJT2-9])\1\+$/))){for(let i=0;i<=RIDX[m[1]];i++)out.push(RANKS[i]+RANKS[i]);return out;}
+  if((m=tok.match(/^([AKQJT2-9])\1$/))){out.push(m[1]+m[1]);return out;}
+  if((m=tok.match(/^([AKQJT2-9])([AKQJT2-9])([so])\+$/))){
+    const hi=RIDX[m[1]],lo=RIDX[m[2]],s=m[3];
+    for(let k=lo;k>hi;k--)out.push(RANKS[hi]+RANKS[k]+s);return out;
+  }
+  if((m=tok.match(/^([AKQJT2-9])([AKQJT2-9])([so])$/))){
+    const hi=RIDX[m[1]],lo=RIDX[m[2]];out.push(RANKS[hi]+RANKS[lo]+m[3]);return out;
+  }
+  console.warn('bad token',tok);return out;
+}
+function expandRange(tokens){const s=new Set();tokens.forEach(t=>expandToken(t).forEach(h=>s.add(h)));return s;}
+function comboCount(h){if(h.length===2)return 6;return h.endsWith('s')?4:12;}
+
+// ---- Categories ----
+const CATS=['Pairs','Suited Aces','Suited Broadways','Suited Connectors','Offsuit Aces','Offsuit Broadways','Other'];
+function categoryOf(h){
+  if(h.length===2)return 'Pairs';
+  const r1=h[0],r2=h[1],s=h[2],i1=RIDX[r1],i2=RIDX[r2];
+  if(r1==='A')return s==='s'?'Suited Aces':'Offsuit Aces';
+  if(i1<=4&&i2<=4)return s==='s'?'Suited Broadways':'Offsuit Broadways';
+  if(s==='s'&&(i2-i1-1)<=1)return 'Suited Connectors';
+  return 'Other';
+}
+// all 169 canonical hands + by category
+// diagonal = pairs, above diagonal (j>i) = suited, below (j<i) = offsuit — each canonical once
+const ALL_HANDS=[];const BY_CAT={};CATS.forEach(c=>BY_CAT[c]=[]);
+for(let i=0;i<13;i++){
+  for(let j=0;j<13;j++){
+    let h;
+    if(i===j)h=RANKS[i]+RANKS[i];
+    else if(j>i)h=RANKS[i]+RANKS[j]+'s';
+    else h=RANKS[j]+RANKS[i]+'o';
+    ALL_HANDS.push(h);BY_CAT[categoryOf(h)].push(h);
+  }
+}
+
+// ---- Position meta ----
+const POS_META={
+  'UTG':'Under the Gun — first to act, full table behind you.',
+  'UTG+1':'Under the Gun +1 — early position.',
+  'MP':'Middle Position.',
+  'HJ':'Hijack — two off the button.',
+  'CO':'Cutoff — one off the button.',
+  'BTN':'Button — best seat, last to act after the flop.',
+  'SB':'Small Blind — first to act postflop; only the BB behind.'
+};
+
+// ---- RANGE DATA ----  raise-first-in opening ranges (tokens)
+const DATA={
+ '6-max':{positions:['UTG','HJ','CO','BTN','SB'],styles:{
+   TAG:{
+     UTG:['77+','ATs+','KTs+','QJs','JTs','T9s','98s','AQo+','KQo'],
+     HJ:['55+','ATs+','KTs+','QTs+','JTs','T9s','98s','87s','AJo+','KQo'],
+     CO:['44+','A8s+','KTs+','QTs+','J9s+','T9s','98s','87s','76s','ATo+','KJo+','QJo'],
+     BTN:['22+','A2s+','K5s+','Q8s+','J8s+','T8s+','97s+','86s+','76s','65s','54s','A5o+','K8o+','Q9o+','J9o+','T9o'],
+     SB:['22+','A2s+','K7s+','Q9s+','J9s+','T9s','98s','87s','76s','65s','54s','A7o+','K9o+','QTo+','JTo']
+   },
+   GTO:{
+     UTG:['22+','A2s+','KTs+','QTs+','JTs','T9s','98s','87s','76s','AJo+','KQo'],
+     HJ:['22+','A2s+','KTs+','QTs+','JTs','T9s','98s','87s','76s','65s','ATo+','KJo+','QJo'],
+     CO:['22+','A2s+','K9s+','Q9s+','J9s+','T9s','98s','87s','76s','65s','54s','A9o+','KTo+','QTo+','JTo'],
+     BTN:['22+','A2s+','K2s+','Q4s+','J6s+','T6s+','97s+','86s+','75s+','64s+','53s+','43s','A2o+','K8o+','Q8o+','J8o+','T8o+','98o'],
+     SB:['22+','A2s+','K5s+','Q6s+','J7s+','T7s+','97s+','86s+','75s+','65s','54s','A2o+','K9o+','Q9o+','J9o+','T9o']
+   }
+ }},
+ 'Full ring':{positions:['UTG','UTG+1','MP','HJ','CO','BTN','SB'],styles:{
+   TAG:{
+     UTG:['77+','ATs+','KQs','KJs','QJs','JTs','T9s','AQo+'],
+     'UTG+1':['66+','ATs+','KTs+','QJs','JTs','T9s','98s','AQo+','KQo'],
+     MP:['55+','ATs+','KTs+','QTs+','JTs','T9s','98s','87s','AJo+','KQo'],
+     HJ:['55+','ATs+','KTs+','QTs+','JTs','T9s','98s','87s','AJo+','KQo'],
+     CO:['44+','A8s+','KTs+','QTs+','J9s+','T9s','98s','87s','76s','ATo+','KJo+','QJo'],
+     BTN:['22+','A2s+','K7s+','Q9s+','J9s+','T8s+','98s','87s','76s','65s','54s','A9o+','KTo+','QTo+','JTo'],
+     SB:['22+','A2s+','K9s+','Q9s+','J9s+','T9s','98s','87s','76s','65s','A9o+','KTo+','QJo']
+   },
+   GTO:{
+     UTG:['55+','ATs+','A5s','KTs+','QJs','QTs','JTs','T9s','98s','87s','AQo+','KQo'],
+     'UTG+1':['44+','A9s+','A5s','KTs+','QTs+','JTs','T9s','98s','87s','76s','AJo+','KQo'],
+     MP:['22+','A2s+','KTs+','QTs+','JTs','T9s','98s','87s','76s','AJo+','KQo'],
+     HJ:['22+','A2s+','KTs+','QTs+','JTs','T9s','98s','87s','76s','65s','ATo+','KJo+','QJo'],
+     CO:['22+','A2s+','K9s+','Q9s+','J9s+','T9s','98s','87s','76s','65s','54s','A9o+','KTo+','QTo+','JTo'],
+     BTN:['22+','A2s+','K2s+','Q4s+','J6s+','T6s+','97s+','86s+','75s+','64s+','53s+','43s','A2o+','K8o+','Q8o+','J8o+','T8o+','98o'],
+     SB:['22+','A2s+','K5s+','Q6s+','J7s+','T7s+','97s+','86s+','75s+','65s','54s','A2o+','K9o+','Q9o+','J9o+','T9o']
+   }
+ }},
+ 'Heads-up':{positions:['SB'],styles:{
+   TAG:{
+     SB:['22+','A2s+','K2s+','Q2s+','J2s+','T4s+','95s+','84s+','74s+','63s+','53s','A2o+','K2o+','Q4o+','J6o+','T6o+','96o+','86o+','75o+','65o','54o']
+   },
+   GTO:{
+     SB:['22+','A2s+','K2s+','Q2s+','J2s+','T2s+','92s+','82s+','72s+','62s+','52s+','42s+','32s','A2o+','K2o+','Q4o+','J6o+','T6o+','96o+','86o+','75o+','65o','54o']
+   }
+ }}
+};
+const STYLE_LABEL={TAG:'Tight-Aggressive',GTO:'GTO / Balanced'};
+
+// ---- State ----
+const LS_KEY='preflop-trainer-v1';
+let state={format:'6-max',style:'TAG',position:'RANDOM',category:'ALL',
+  correct:0,total:0,streak:0,best:0,view:'drill',showSettings:false};
+try{const saved=JSON.parse(localStorage.getItem(LS_KEY));if(saved)Object.assign(state,saved);}catch(e){}
+function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
+
+let current=null; // {hand,pos,correctAction}
+let answered=false;
+
+// ---- DOM ----
+const $=id=>document.getElementById(id);
+const selFormat=$('sel-format'),selStyle=$('sel-style'),selPos=$('sel-pos'),selCat=$('sel-cat');
+
+function opt(v,label,sel){const o=document.createElement('option');o.value=v;o.textContent=label;if(sel)o.selected=true;return o;}
+
+function buildFormatSel(){selFormat.innerHTML='';Object.keys(DATA).forEach(f=>selFormat.appendChild(opt(f,f,f===state.format)));}
+function buildStyleSel(){selStyle.innerHTML='';Object.keys(DATA[state.format].styles).forEach(s=>selStyle.appendChild(opt(s,STYLE_LABEL[s]||s,s===state.style)));}
+function buildPosSel(){
+  selPos.innerHTML='';
+  const positions=DATA[state.format].positions;
+  if(positions.length>1)selPos.appendChild(opt('RANDOM','Random (all)',state.position==='RANDOM'));
+  positions.forEach(p=>selPos.appendChild(opt(p,p,state.position===p)));
+  // if current position no longer valid for this format, fall back
+  if(state.position!=='RANDOM'&&!positions.includes(state.position)){
+    state.position=positions.length>1?'RANDOM':positions[0];selPos.value=state.position;
+  }
+  if(positions.length===1){state.position=positions[0];selPos.value=positions[0];}
+}
+function buildCatSel(){
+  selCat.innerHTML='';selCat.appendChild(opt('ALL','All hands',state.category==='ALL'));
+  CATS.forEach(c=>selCat.appendChild(opt(c,c,state.category===c)));
+}
+function updateConfigChip(){
+  const pos=state.position==='RANDOM'?'All seats':state.position;
+  const cat=state.category==='ALL'?'All hands':state.category;
+  $('configChip').textContent=`${state.format} · ${state.style} · ${pos} · ${cat}`;
+}
+function setSettings(open){
+  state.showSettings=open;save();
+  $('controls').hidden=!open;
+  $('btnSettings').setAttribute('aria-expanded',open);
+}
+
+function currentStyleFor(pos){
+  const styles=DATA[state.format].styles;
+  return styles[state.style]?styles[state.style][pos]:styles[Object.keys(styles)[0]][pos];
+}
+
+// ---- Drill ----
+function pickHand(){
+  const pool=state.category==='ALL'?ALL_HANDS:BY_CAT[state.category];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function pickPosition(){
+  const positions=DATA[state.format].positions;
+  if(state.position==='RANDOM'||!positions.includes(state.position))
+    return positions[Math.floor(Math.random()*positions.length)];
+  return state.position;
+}
+function suitsFor(hand){
+  if(hand.length===2){ // pair — two distinct suits
+    const a=Math.floor(Math.random()*4);let b=Math.floor(Math.random()*3);if(b>=a)b++;
+    return [{r:hand[0],...SUITS[a]},{r:hand[1],...SUITS[b]}];
+  }
+  const s=hand[2];
+  if(s==='s'){const a=Math.floor(Math.random()*4);return [{r:hand[0],...SUITS[a]},{r:hand[1],...SUITS[a]}];}
+  const a=Math.floor(Math.random()*4);let b=Math.floor(Math.random()*3);if(b>=a)b++;
+  return [{r:hand[0],...SUITS[a]},{r:hand[1],...SUITS[b]}];
+}
+function renderCards(cardDefs,animate){
+  const el=$('cards');el.innerHTML='';
+  cardDefs.forEach(c=>{
+    const d=document.createElement('div');d.className='card'+(animate?' deal':'');
+    d.innerHTML=`<div class="corner tl ${c.c}"><span>${faceRank(c.r)}</span><span class="pip">${c.g}</span></div>`+
+      `<div class="center ${c.c}">${c.g}</div>`+
+      `<div class="corner br ${c.c}"><span>${faceRank(c.r)}</span><span class="pip">${c.g}</span></div>`;
+    el.appendChild(d);
+  });
+}
+function deal(){
+  answered=false;
+  const pos=pickPosition();
+  const hand=pickHand();
+  const raiseSet=expandRange(currentStyleFor(pos));
+  current={hand,pos,correctAction:raiseSet.has(hand)?'raise':'fold'};
+  $('posBadge').innerHTML=`${pos} <span class="fmt">· ${state.format}</span>`;
+  $('posDesc').textContent=POS_META[pos]||'Folded to you. Do you open?';
+  renderCards(suitsFor(hand),true);
+  $('notation').innerHTML='&nbsp;';
+  $('feedback').innerHTML='';
+  $('actions').innerHTML=
+    '<button class="btn btn-fold" id="btnFold">Fold<span class="k">F</span></button>'+
+    '<button class="btn btn-raise" id="btnRaise">Raise<span class="k">R / Space</span></button>';
+  $('btnFold').onclick=()=>answer('fold');
+  $('btnRaise').onclick=()=>answer('raise');
+}
+function answer(action){
+  if(answered)return;answered=true;
+  const right=action===current.correctAction;
+  state.total++;
+  if(right){state.correct++;state.streak++;if(state.streak>state.best)state.best=state.streak;}
+  else state.streak=0;
+  save();updateScore();
+  const cat=categoryOf(current.hand);
+  $('notation').innerHTML=`${current.hand} <span class="cat">· ${cat}</span>`;
+  const correctWord=current.correctAction.toUpperCase();
+  const fb=$('feedback');
+  fb.innerHTML=`<div class="verdict ${right?'good':'bad'}">`+
+    `<span class="lead">${right?'✓ Correct':'✗ Incorrect'} — ${correctWord} ${current.hand}</span>`+
+    `<span class="note">${right?`${current.hand} is a ${correctWord.toLowerCase()} from ${current.pos} (${STYLE_LABEL[state.style]||state.style})`:`Correct play is <b>${correctWord}</b> — ${current.hand} from ${current.pos}, ${STYLE_LABEL[state.style]||state.style}`}</span>`+
+    `</div>`;
+  $('actions').innerHTML='<button class="btn btn-next" id="btnNext">Next hand ▸<span class="k">Space / Enter</span></button>';
+  $('btnNext').onclick=deal;
+}
+function updateScore(){
+  $('stAcc').textContent=state.total?Math.round(100*state.correct/state.total)+'%':'—';
+  $('stCount').textContent=state.correct+'/'+state.total;
+  $('stStreak').textContent=state.streak;
+  $('stBest').textContent=state.best;
+}
+
+// ---- Chart ----
+function renderChart(){
+  const positions=DATA[state.format].positions;
+  let pos=state.position;
+  if(pos==='RANDOM'||!positions.includes(pos))pos=positions[positions.length>1?positions.length-1:0]; // default to a concrete seat (BTN-ish)
+  const raiseSet=expandRange(currentStyleFor(pos));
+  let combos=0;raiseSet.forEach(h=>combos+=comboCount(h));
+  const pct=(100*combos/1326);
+  $('chartTitle').textContent=`${pos} · ${STYLE_LABEL[state.style]||state.style}`;
+  $('chartPct').textContent=pct.toFixed(1)+'% of hands';
+  // grid
+  const g=$('grid');g.innerHTML='';
+  for(let i=0;i<13;i++){
+    const tr=document.createElement('tr');
+    for(let j=0;j<13;j++){
+      let h,isPair=false;
+      if(i===j){h=RANKS[i]+RANKS[i];isPair=true;}
+      else if(j>i)h=RANKS[i]+RANKS[j]+'s';
+      else h=RANKS[j]+RANKS[i]+'o';
+      const td=document.createElement('td');
+      td.textContent=h;
+      if(isPair)td.classList.add('pair');
+      if(raiseSet.has(h))td.classList.add('raise');
+      td.title=h+' · '+categoryOf(h);
+      tr.appendChild(td);
+    }
+    g.appendChild(tr);
+  }
+  // breakdown by category
+  const bd=$('breakdown');bd.innerHTML='';
+  const rowTot=document.createElement('div');rowTot.className='row';
+  rowTot.innerHTML=`<span class="k">Open frequency</span><span class="v">${pct.toFixed(1)}% · ${combos} combos</span>`;
+  bd.appendChild(rowTot);
+  CATS.forEach(c=>{
+    const inCat=BY_CAT[c].filter(h=>raiseSet.has(h));
+    if(!inCat.length)return;
+    const row=document.createElement('div');row.className='row';
+    row.innerHTML=`<span class="k">${c}</span><span class="v">${inCat.join(' ')}</span>`;
+    bd.appendChild(row);
+  });
+  $('chartNote').textContent=state.position==='RANDOM'
+    ? `Showing ${pos}. Pick a specific position above to view its chart; "Random" drills all seats.`
+    : `Green cells are hands you open-raise from ${pos}. Suited hands sit above the diagonal, offsuit below, pairs on the diagonal.`;
+}
+
+// ---- View switching ----
+function setView(v){
+  state.view=v;save();
+  const drill=v==='drill';
+  $('tab-drill').setAttribute('aria-selected',drill);
+  $('tab-chart').setAttribute('aria-selected',!drill);
+  $('view-drill').hidden=!drill;
+  $('view-chart').hidden=drill;
+  if(!drill)renderChart();
+}
+
+// ---- Wire up ----
+function refreshAfterControlChange(){
+  buildStyleSel();buildPosSel();buildCatSel();updateConfigChip();save();
+  if(state.view==='drill')deal();else renderChart();
+}
+selFormat.onchange=()=>{state.format=selFormat.value;refreshAfterControlChange();};
+selStyle.onchange=()=>{state.style=selStyle.value;refreshAfterControlChange();};
+selPos.onchange=()=>{state.position=selPos.value;updateConfigChip();save();if(state.view==='drill')deal();else renderChart();};
+selCat.onchange=()=>{state.category=selCat.value;updateConfigChip();save();if(state.view==='drill')deal();};
+$('btnSettings').onclick=()=>setSettings(!state.showSettings);
+$('configChip').onclick=()=>setSettings(!state.showSettings);
+$('tab-drill').onclick=()=>setView('drill');
+$('tab-chart').onclick=()=>setView('chart');
+$('btnReset').onclick=()=>{state.correct=0;state.total=0;state.streak=0;state.best=0;save();updateScore();};
+
+document.addEventListener('keydown',e=>{
+  if(state.view!=='drill')return;
+  if(e.target.tagName==='SELECT')return;
+  const k=e.key.toLowerCase();
+  if(!answered){
+    if(k==='f'){e.preventDefault();answer('fold');}
+    else if(k==='r'||k===' '){e.preventDefault();answer('raise');}
+  }else{
+    if(k===' '||k==='enter'){e.preventDefault();deal();}
+  }
+});
+
+// init
+buildFormatSel();buildStyleSel();buildPosSel();buildCatSel();updateScore();
+updateConfigChip();setSettings(state.showSettings);
+setView(state.view||'drill');
+if(state.view==='drill')deal();
+</script>
