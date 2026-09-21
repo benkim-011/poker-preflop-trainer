@@ -311,6 +311,31 @@ function expandToken(tok){
 function expandRange(tokens){const s=new Set();tokens.forEach(t=>expandToken(t).forEach(h=>s.add(h)));return s;}
 function comboCount(h){if(h.length===2)return 6;return h.endsWith('s')?4:12;}
 
+// ---- Threshold explanation (shown when you miss) ----
+const HIGH_NAME={A:'aces',K:'kings',Q:'queens',J:'jacks',T:'tens','9':'nines','8':'eights','7':'sevens','6':'sixes','5':'fives','4':'fours','3':'threes','2':'twos'};
+function sameFamily(a,b){
+  if(a.length===2&&b.length===2)return true;      // both pairs
+  if(a.length===2||b.length===2)return false;
+  return a[0]===b[0]&&a[2]===b[2];                // same high card + same suited/offsuit
+}
+function famLabel(hand){
+  if(hand.length===2)return 'pairs';
+  return (hand[2]==='s'?'suited ':'offsuit ')+HIGH_NAME[hand[0]];
+}
+function weakestOf(hands){ // weakest = lowest pair, or lowest kicker
+  let worst=null,ws=-1;
+  hands.forEach(h=>{const s=h.length===2?RIDX[h[0]]:RIDX[h[1]];if(s>ws){ws=s;worst=h;}});
+  return worst;
+}
+function explainThreshold(hand,pos,raiseSet,correctAction){
+  const fam=famLabel(hand);
+  const members=[...raiseSet].filter(h=>sameFamily(h,hand));
+  if(!members.length) return `From ${pos} you don't open any ${fam} — ${hand} is a fold.`;
+  const weakest=weakestOf(members);
+  if(correctAction==='raise') return `${hand} is in range — from ${pos} you open ${fam} down to ${weakest} (${weakest}+).`;
+  return `From ${pos} you open ${fam} only down to ${weakest} (${weakest}+). ${hand} is weaker — fold.`;
+}
+
 // ---- Categories ----
 const CATS=['Pairs','Suited Aces','Suited Broadways','Suited Connectors','Offsuit Aces','Offsuit Broadways','Other'];
 function categoryOf(h){
@@ -391,8 +416,9 @@ let state={format:'6-max',style:'TAG',position:'RANDOM',category:'ALL',
 try{const saved=JSON.parse(localStorage.getItem(LS_KEY));if(saved)Object.assign(state,saved);}catch(e){}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
 
-let current=null; // {hand,pos,correctAction}
+let current=null; // {hand,pos,correctAction,raiseSet,...}
 let answered=false;
+let pendingTimer=null;
 
 // ---- DOM ----
 const $=id=>document.getElementById(id);
@@ -468,13 +494,15 @@ function missKey(fmt,style,pos,hand){return `${fmt}|${style}|${pos}|${hand}`;}
 function missEntries(){return Object.entries(state.misses);}
 
 function deal(){
+  clearTimeout(pendingTimer);
   answered=false;
   // practice-misses mode: re-deal only hands you've gotten wrong
   if(state.practiceMisses){
     const entries=missEntries();
     if(!entries.length){exitPractice(true);return;}
     const [key,r]=entries[Math.floor(Math.random()*entries.length)];
-    current={hand:r.hand,pos:r.pos,correctAction:r.correct,practiceKey:key,fmt:r.format,style:r.style};
+    const styleTokens=(DATA[r.format]&&DATA[r.format].styles[r.style]&&DATA[r.format].styles[r.style][r.pos])||[];
+    current={hand:r.hand,pos:r.pos,correctAction:r.correct,practiceKey:key,fmt:r.format,style:r.style,raiseSet:expandRange(styleTokens)};
     $('posBadge').innerHTML=`${r.pos} <span class="fmt">· ${r.format} · ${r.style}</span>`;
     renderCards(suitsFor(r.hand),true);
     $('notation').innerHTML='&nbsp;';$('feedback').innerHTML='';
@@ -487,7 +515,7 @@ function deal(){
   const pos=pickPosition();
   const hand=pickHand();
   const raiseSet=expandRange(currentStyleFor(pos));
-  current={hand,pos,correctAction:raiseSet.has(hand)?'raise':'fold'};
+  current={hand,pos,correctAction:raiseSet.has(hand)?'raise':'fold',raiseSet};
   $('posBadge').innerHTML=`${pos} <span class="fmt">· ${state.format}</span>`;
   renderCards(suitsFor(hand),true);
   $('notation').innerHTML='&nbsp;';
@@ -518,16 +546,21 @@ function answer(action){
   }
   updateMissTab();
   save();updateScore();
-  const cat=categoryOf(current.hand);
-  $('notation').innerHTML=`${current.hand} <span class="cat">· ${cat}</span>`;
   const correctWord=current.correctAction.toUpperCase();
+  $('notation').innerHTML=`${current.hand} <span class="cat">· ${categoryOf(current.hand)}</span>`;
   const fb=$('feedback');
-  fb.innerHTML=`<div class="verdict ${right?'good':'bad'}">`+
-    `<span class="lead">${right?'✓ Correct':'✗ Incorrect'} — ${correctWord} ${current.hand}</span>`+
-    `<span class="note">${right?`${current.hand} is a ${correctWord.toLowerCase()} from ${current.pos} (${STYLE_LABEL[state.style]||state.style})`:`Correct play is <b>${correctWord}</b> — ${current.hand} from ${current.pos}, ${STYLE_LABEL[state.style]||state.style}`}</span>`+
-    `</div>`;
-  $('actions').innerHTML='<button class="btn btn-next" id="btnNext">Next hand ▸<span class="k">Space / Enter</span></button>';
-  $('btnNext').onclick=deal;
+  if(right){
+    // correct — flash and auto-advance, no click needed
+    fb.innerHTML=`<div class="verdict good"><span class="lead">✓ ${correctWord} ${current.hand}</span></div>`;
+    const f=$('btnFold'),r=$('btnRaise');if(f)f.disabled=true;if(r)r.disabled=true;
+    pendingTimer=setTimeout(deal,480);
+  }else{
+    // wrong — stop and teach the threshold
+    fb.innerHTML=`<div class="verdict bad"><span class="lead">✗ ${correctWord} ${current.hand}</span>`+
+      `<span class="note">${explainThreshold(current.hand,current.pos,current.raiseSet,current.correctAction)}</span></div>`;
+    $('actions').innerHTML='<button class="btn btn-next" id="btnNext">Next hand ▸<span class="k">Space / Enter</span></button>';
+    $('btnNext').onclick=deal;
+  }
 }
 function updateScore(){
   $('stAcc').textContent=state.total?Math.round(100*state.correct/state.total)+'%':'—';
