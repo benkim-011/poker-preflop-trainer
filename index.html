@@ -792,4 +792,14 @@ updateConfigChip();setSettings(state.showSettings);updateMissTab();updateMuteBtn
 $('practiceBanner').hidden=!state.practiceMisses;
 setView(state.view||'drill');
 if(state.view==='drill')deal();
+
+// Auto-update: register a network-first service worker so people with the link
+// always get the latest version. No-ops in sandboxed contexts (e.g. artifact).
+if('serviceWorker' in navigator){
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;refreshing=true;location.reload();
+  });
+  try{navigator.serviceWorker.register('sw.js').catch(()=>{});}catch(e){}
+}
 </script>
