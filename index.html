@@ -362,22 +362,38 @@ function cutoffIndex(members){
   for(let i=1;i<idxs.length;i++){if(idxs[i]===end+1)end=idxs[i];else break;}
   return end;
 }
-// Why a lower-than-cutoff hand is still opened (the exception hands).
-function outlierReason(hand){
-  if(hand.length===3&&hand[0]==='A'&&RIDX[hand[1]]>=RIDX['5']) // A5s/A4s/A3s/A2s
-    return `${hand} — exception: makes the wheel straight + nut flush, and blocks AA/AK`;
-  return `${hand} — exception hand, opened for its blockers & playability`;
+// Plain-English "why open" for a hand that should be raised.
+function raiseReason(hand,members){
+  if(members.length){ // exception hand sitting below the main cutoff
+    const cut=cutoffIndex(members);
+    if(subRank(hand)>cut && hand[0]==='A' && hand[2]==='s' && RIDX[hand[1]]>=RIDX['5'])
+      return `${hand} — exception: wheel straight + nut flush, and blocks AA/AK`;
+  }
+  if(hand.length===2)
+    return RIDX[hand[0]]<=4 ? 'Strong pocket pair — clear open.' : 'Pocket pair — set value + playability.';
+  const suited=hand[2]==='s', hi=hand[0], lo=hand[1];
+  const broadway=RIDX[hi]<=4&&RIDX[lo]<=4, gap=RIDX[lo]-RIDX[hi]-1;
+  if(hi==='A') return suited?'Suited ace — nut-flush upside.':'Ace with a playable kicker.';
+  if(broadway) return suited?'Suited broadway — top pairs, flushes, straights.':'Two big cards — strong offsuit open.';
+  if(suited&&gap<=1) return 'Suited connector — great playability.';
+  if(suited) return 'Suited & playable — worth opening.';
+  return 'Playable enough to open from here.';
+}
+// Plain-English "why fold" for a hand that should be folded.
+function foldReason(hand){
+  if(hand.length===2) return 'Small pair — fold from early position.';
+  const suited=hand[2]==='s', hi=hand[0];
+  if(hi==='A') return suited?'Middling ace — often dominated.':'Weak ace — gets out-kicked.';
+  if(!suited) return 'Offsuit & weak — likely dominated.';
+  return 'Too light to open — better hands behind.';
 }
 function explainThreshold(hand,pos,raiseSet,correctAction){
   const fam=famLabel(hand);
   const members=[...raiseSet].filter(h=>sameFamily(h,hand));
-  if(!members.length) return `No ${fam} opened here`;
-  const cut=cutoffIndex(members);
-  const Fam=fam.charAt(0).toUpperCase()+fam.slice(1);
-  // Folded a hand that opens but sits BELOW the cutoff -> it's an exception; explain why.
-  if(correctAction==='raise' && subRank(hand)>cut) return outlierReason(hand);
-  // Otherwise show the cutoff they missed.
-  return `${Fam}: ${labelFor(hand,cut)}+`;
+  if(correctAction==='raise') return raiseReason(hand,members);
+  // fold: reason + the exact cutoff you overshot (when the family opens anything)
+  if(!members.length) return foldReason(hand);
+  return `${foldReason(hand)} · open ${labelFor(hand,cutoffIndex(members))}+`;
 }
 
 // ---- Categories ----
