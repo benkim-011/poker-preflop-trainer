@@ -353,28 +353,31 @@ function famLabel(hand){
   if(hand.length===2)return 'pairs';
   return (hand[2]==='s'?'suited ':'offsuit ')+HIGH_NAME[hand[0]];
 }
-// Compress a family's raised hands into compact notation, honoring gaps.
-// Contiguous run reaching the top -> "ATs+"; an isolated blocker -> "A5s";
-// a mid run -> "A7s-A5s". e.g. {AKs,AQs,AJs,ATs,A5s} -> "ATs+, A5s".
-function compressFamily(members,hand){
-  const isPair=hand.length===2;
-  const sub=h=>isPair?RIDX[h[0]]:RIDX[h[1]];      // strength index: lower = stronger
-  const top=isPair?0:RIDX[hand[0]]+1;             // strongest possible in this family
-  const label=i=>isPair?RANKS[i]+RANKS[i]:hand[0]+RANKS[i]+hand[2];
-  const idxs=members.map(sub).sort((a,b)=>a-b);
-  const runs=[];let start=idxs[0],prev=idxs[0];
-  for(let i=1;i<idxs.length;i++){
-    if(idxs[i]===prev+1)prev=idxs[i];
-    else{runs.push([start,prev]);start=idxs[i];prev=idxs[i];}
-  }
-  runs.push([start,prev]);
-  return runs.map(([s,e])=> s===top ? label(e)+'+' : (s===e?label(s):label(s)+'-'+label(e))).join(', ');
+const subRank=h=>h.length===2?RIDX[h[0]]:RIDX[h[1]]; // strength within family: lower = stronger
+const labelFor=(hand,i)=>hand.length===2?RANKS[i]+RANKS[i]:hand[0]+RANKS[i]+hand[2];
+// The main cutoff = weakest hand of the top continuous run (ignores lower blockers).
+function cutoffIndex(members){
+  const idxs=members.map(subRank).sort((a,b)=>a-b);
+  let end=idxs[0];
+  for(let i=1;i<idxs.length;i++){if(idxs[i]===end+1)end=idxs[i];else break;}
+  return end;
+}
+// Why a lower-than-cutoff hand is still opened (the exception hands).
+function outlierReason(hand){
+  if(hand.length===3&&hand[0]==='A'&&RIDX[hand[1]]>=RIDX['5']) // A5s/A4s/A3s/A2s
+    return `${hand} — exception: makes the wheel straight + nut flush, and blocks AA/AK`;
+  return `${hand} — exception hand, opened for its blockers & playability`;
 }
 function explainThreshold(hand,pos,raiseSet,correctAction){
   const fam=famLabel(hand);
   const members=[...raiseSet].filter(h=>sameFamily(h,hand));
   if(!members.length) return `No ${fam} opened here`;
-  return `${fam.charAt(0).toUpperCase()+fam.slice(1)}: ${compressFamily(members,hand)}`;
+  const cut=cutoffIndex(members);
+  const Fam=fam.charAt(0).toUpperCase()+fam.slice(1);
+  // Folded a hand that opens but sits BELOW the cutoff -> it's an exception; explain why.
+  if(correctAction==='raise' && subRank(hand)>cut) return outlierReason(hand);
+  // Otherwise show the cutoff they missed.
+  return `${Fam}: ${labelFor(hand,cut)}+`;
 }
 
 // ---- Categories ----
